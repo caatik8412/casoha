@@ -271,7 +271,9 @@ body{
 
   <!-- LOG -->
   <div class="card">
-    <div class="sec-t">Session Log <button class="editbtn" id="forceSync">sync now</button></div>
+    <div class="sec-t">Session Log</div>
+    <button id="forceSync" style="width:100%;background:var(--grad);color:#1a1206;border:none;border-radius:12px;font-family:'DM Mono';font-weight:500;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;padding:14px;cursor:pointer;margin-bottom:6px">⟳ Sync Now to Google Sheet</button>
+    <div id="syncStatus" style="font-size:10px;letter-spacing:.5px;color:var(--muted);text-align:center;margin-bottom:12px;min-height:12px"></div>
     <div class="log" id="log"></div>
   </div>
   </div><!-- /view-today -->
@@ -315,7 +317,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v1.5",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v1.6",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbwRzXhUfTNKu0d2yicGbQkXu4OyaO5YBnx3HzdZKbgTAWlL4Dd9wNzYcRuUb6bqfQejiA/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
@@ -487,7 +489,13 @@ async function sendLive(status){
     elapsed: status==='studying'&&startTs?Math.floor((Date.now()-startTs)/60000):0,
     note: status==='studying'?($('note').value||'').trim():''});
 }
-$('forceSync').onclick=()=>{flushSessions();syncState();};
+$('forceSync').onclick=async()=>{
+  const s=$('syncStatus'); const unsynced=S.sessions.filter(x=>!x.synced).length;
+  s.textContent='Syncing '+(unsynced||'all')+' session(s)…';
+  await flushSessions(); await syncState();
+  const left=S.sessions.filter(x=>!x.synced).length;
+  s.textContent=left? (left+' still pending — check connection') : ('✓ All synced · '+new Date().toLocaleTimeString());
+};
 window.addEventListener('online',flushSessions);
 
 /* ========= MODALS ========= */
