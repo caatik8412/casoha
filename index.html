@@ -314,7 +314,7 @@ body{
 const CONFIG = {
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
-  SHEET_URL: "https://script.google.com/macros/s/AKfycbyTZ5NynVviDjqj6QgCHBVJumqY__gonYdQg5sLnrnYvq0-A0XLvT55mc19hCwmt1O4bw/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbyph2tmAZnY8tb0cj--PlAo9gcx49trTAnSUx0vqm5qFw1fC3012iF-q88N-Deal6y-Yg/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
 };
 const PAPERS = ["FR","AFM","AAPE"];
 const PAPER_NAMES = {FR:"Financial Reporting",AFM:"Adv. Financial Mgmt",AAPE:"Adv. Auditing & Ethics"};
@@ -360,24 +360,23 @@ $('startBtn').onclick=()=>{
   $('tstatus').innerHTML='<span class="dot"></span>Studying '+curPaper;
   $('tstatus').classList.add('live');
   $('startBtn').disabled=true; $('stopBtn').disabled=false;
-  sendLive('studying');                      // immediate ping
+  sendLive('studying');                      // single ping on start
   tick=setInterval(()=>{const s=Math.floor((Date.now()-startTs)/1000);
     $('timer').textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`;
-    if(s%60===0) sendLive('studying');       // heartbeat each minute
   },1000);
 };
 $('stopBtn').onclick=()=>{
-  const mins=Math.round((Date.now()-startTs)/60000);
+  if(!startTs){ return; }                       // nothing running
   clearInterval(tick);
-  if(mins>0){
-    const e={id:Date.now()+''+Math.floor(Math.random()*99),ts:startTs,date:todayKey(),
-      paper:curPaper,mins,note:($('note').value||'').trim(),synced:false};
-    S.sessions.push(e); persist(); queueSync(e);
-  }
+  const secs=Math.max(1,Math.round((Date.now()-startTs)/1000));
+  const mins=Math.max(1,Math.round(secs/60));   // at least 1 min so it always logs
+  const e={id:Date.now()+''+Math.floor(Math.random()*99),ts:startTs,date:todayKey(),
+    paper:curPaper,mins,secs,note:($('note').value||'').trim(),synced:false};
+  S.sessions.push(e); persist(); queueSync(e);
   startTs=null; $('timer').textContent='00:00:00'; $('note').value='';
   $('tstatus').textContent='Ready'; $('tstatus').classList.remove('live');
   $('startBtn').disabled=false; $('stopBtn').disabled=true;
-  sendLive('idle');                          // mark stopped
+  sendLive('idle');                             // mark stopped
   render();
 };
 
@@ -490,6 +489,13 @@ $('saveWk').onclick=()=>{S.weeklyHrs=+$('wHrs').value||35;persist();syncState();
 /* ========= RENDER ========= */
 function hrs(m){return (m/60);}
 function fmtH(m){const h=m/60;return h>=10?Math.round(h):h.toFixed(1).replace(/\.0$/,'');}
+// human duration: "45m", "1h 20m", "2h"
+function fmtDur(mins){
+  mins=Math.round(mins);
+  if(mins<60) return mins+'m';
+  const h=Math.floor(mins/60), m=mins%60;
+  return m? h+'h '+m+'m' : h+'h';
+}
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function render(){
@@ -498,12 +504,12 @@ function render(){
   const t=todayKey(), w=weekStart();
   const todayMins=S.sessions.filter(s=>s.date===t).reduce((a,s)=>a+s.mins,0);
   const weekMins=S.sessions.filter(s=>weekStart(new Date(s.ts))===w).reduce((a,s)=>a+s.mins,0);
-  $('sToday').innerHTML=fmtH(todayMins)+'<span class="u">h</span>';
-  $('sWeek').innerHTML=fmtH(weekMins)+'<span class="u">h</span>';
+  $('sToday').innerHTML=fmtDur(todayMins);
+  $('sWeek').innerHTML=fmtDur(weekMins);
   $('sStreak').textContent=streak();
-  // weekly bar
+  // weekly bar (kept in hours vs the hours target)
   const wp=Math.min(100,Math.round(hrs(weekMins)/S.weeklyHrs*100));
-  $('wkFill').style.width=wp+'%'; $('wkVal').textContent=`${fmtH(weekMins)} / ${S.weeklyHrs} h`;
+  $('wkFill').style.width=wp+'%'; $('wkVal').textContent=`${fmtDur(weekMins)} / ${S.weeklyHrs}h`;
   renderPapers(); renderTasks(); renderChart(); renderLog(); renderPlan();
  }catch(err){ console.error('render error',err); }
 }
@@ -523,9 +529,9 @@ function renderCountdown(){
 function renderPapers(){
   $('papers').innerHTML=PAPERS.map(p=>{
     const m=S.sessions.filter(s=>s.paper===p).reduce((a,s)=>a+s.mins,0);
-    const done=fmtH(m), tgt=S.targets[p], pc=Math.min(100,Math.round(hrs(m)/tgt*100));
+    const done=(m<60?m+'m':fmtH(m)+'h'), tgt=S.targets[p], pc=Math.min(100,Math.round(hrs(m)/tgt*100));
     return `<div class="prow ${p.toLowerCase()}">
-      <div class="h"><b>${p} <span style="color:var(--muted);font-weight:400">· ${PAPER_NAMES[p]}</span></b><span>${done} / ${tgt} h</span></div>
+      <div class="h"><b>${p} <span style="color:var(--muted);font-weight:400">· ${PAPER_NAMES[p]}</span></b><span>${done} / ${tgt}h</span></div>
       <div class="bar"><i style="width:${pc}%"></i></div>
       <div class="pct">
         <span style="font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase">portion</span>
@@ -574,7 +580,7 @@ function renderChart(){
     const segs=PAPERS.map(p=>{const m=S.sessions.filter(s=>s.date===k&&s.paper===p).reduce((a,s)=>a+s.mins,0);
       return m?`<div style="height:${m/max*90}px;background:${cmap[p]}"></div>`:'';}).join('');
     const tot=S.sessions.filter(s=>s.date===k).reduce((a,s)=>a+s.mins,0);
-    return `<div class="col"><div class="tot">${tot?fmtH(tot):''}</div>
+    return `<div class="col"><div class="tot">${tot?(tot<60?tot+'m':fmtH(tot)+'h'):''}</div>
       <div class="stack" style="height:${tot/max*90}px">${segs}</div>
       <div class="lab">${'SMTWTFS'[d.getDay()]}</div></div>`;
   }).join('');
@@ -588,7 +594,7 @@ function renderLog(){
       <span class="pp" style="background:${cmap[s.paper]}">${s.paper}</span>
       <div class="meta"><div class="nt">${esc(s.note)||'<span style="color:var(--muted)">no note</span>'}</div>
       <div class="dt">${d.toLocaleDateString(undefined,{month:'short',day:'numeric'})} · ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}${s.synced?'':' · ⟳'}</div></div></div>
-      <div class="dur">${fmtH(s.mins)}h</div></div>`;
+      <div class="dur">${fmtDur(s.mins)}</div></div>`;
   }).join('') : '<div class="empty">No sessions logged yet</div>';
 }
 
