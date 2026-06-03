@@ -451,7 +451,7 @@ async function flushSessions(){
   pill('syncing…');
   for(const e of pending){
     try{
-      await fetch(CONFIG.SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+      await fetch(CONFIG.SHEET_URL,{method:'POST',mode:'no-cors',
         body:JSON.stringify({type:'session',...e})});
       e.synced=true; persist();
     }catch(err){ pill('offline — will retry','err'); return; }
@@ -461,7 +461,7 @@ async function flushSessions(){
 async function syncState(){
   if(!CONFIG.SHEET_URL)return;
   try{
-    await fetch(CONFIG.SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+    await fetch(CONFIG.SHEET_URL,{method:'POST',mode:'no-cors',
       body:JSON.stringify({type:'state',targets:S.targets,portion:S.portion,
         dailyGoal:S.dailyGoal,weeklyHrs:S.weeklyHrs,tasks:S.tasks,plan:S.plan,updated:Date.now()})});
   }catch(e){}
@@ -474,7 +474,7 @@ async function sendLive(status){
     startedAt: status==='studying'?startTs:null,
     elapsed: status==='studying'&&startTs?Math.floor((Date.now()-startTs)/60000):0,
     note: status==='studying'?($('note').value||'').trim():''};
-  try{ await fetch(CONFIG.SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)}); }catch(e){}
+  try{ await fetch(CONFIG.SHEET_URL,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)}); }catch(e){}
 }
 $('forceSync').onclick=()=>{flushSessions();syncState();};
 window.addEventListener('online',flushSessions);
