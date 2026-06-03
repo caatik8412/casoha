@@ -317,7 +317,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v1.6",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v1.7",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbyQEYVkQBfMpZ6hio8hcbnhlWxdCtdXioAwm5X3dHJaoEiZVivAwaWoenxXLl945kchDg/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
@@ -617,22 +617,36 @@ function renderLog(){
   }).join('') : '<div class="empty">No sessions logged yet</div>';
 }
 
-/* ========= PULL STATE (receive guide's targets/tasks) ========= */
+/* ========= PULL STATE + SESSIONS (full sync down from Sheet) ========= */
 async function pullState(){
   if(!CONFIG.SHEET_URL)return;
   if(location.protocol!=='https:'&&location.protocol!=='http:')return;
   try{
     const r=await fetch(CONFIG.SHEET_URL+'?t='+Date.now());
     const d=await r.json();
-    if(!d||!d.state)return;
-    const st=d.state;
-    // targets/goals: guide's values win
-    if(st.targets) S.targets=Object.assign(S.targets,st.targets);
-    if(st.dailyGoal!=null) S.dailyGoal=st.dailyGoal;
-    if(st.weeklyHrs!=null) S.weeklyHrs=st.weeklyHrs;
-    // tasks & plan: merge by id, keep local done-state if newer locally
-    if(st.tasks) S.tasks=mergeLocal(S.tasks,st.tasks);
-    if(st.plan)  S.plan =mergeLocal(S.plan, st.plan);
+    if(!d)return;
+    // --- merge SESSIONS from the sheet so today/week/total reflect everything ---
+    if(Array.isArray(d.sessions)){
+      const byId={};
+      // keep local ones first (preserves unsynced + synced flags)
+      S.sessions.forEach(s=>{ if(s&&s.id!=null) byId[s.id]=s; });
+      d.sessions.forEach(s=>{
+        if(!s||s.id==null) return;
+        if(byId[s.id]){ byId[s.id].synced=true; }      // already have it; mark synced
+        else { byId[s.id]={id:s.id,ts:s.ts,date:s.date,paper:s.paper,mins:s.mins,note:s.note||'',synced:true}; }
+      });
+      S.sessions=Object.keys(byId).map(k=>byId[k]).sort((a,b)=>a.ts-b.ts);
+    }
+    // --- state (targets/tasks/plan) ---
+    if(d.state){
+      const st=d.state;
+      if(st.targets) S.targets=Object.assign(S.targets,st.targets);
+      if(st.portion) S.portion=Object.assign(S.portion,st.portion);
+      if(st.dailyGoal!=null) S.dailyGoal=st.dailyGoal;
+      if(st.weeklyHrs!=null) S.weeklyHrs=st.weeklyHrs;
+      if(st.tasks) S.tasks=mergeLocal(S.tasks,st.tasks);
+      if(st.plan)  S.plan =mergeLocal(S.plan, st.plan);
+    }
     persist(); render();
   }catch(e){}
 }
