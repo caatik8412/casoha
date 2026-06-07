@@ -356,7 +356,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.2",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.3",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbyQEYVkQBfMpZ6hio8hcbnhlWxdCtdXioAwm5X3dHJaoEiZVivAwaWoenxXLl945kchDg/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
@@ -924,6 +924,11 @@ window.addEventListener('load', ()=>{
 
 <!--
 ========================= VERSION LOG =========================
+v2.3  Topics tab with official CA Final syllabus (31 FR chapters, 15 AFM chapters).
+      Fixed event listener timing for topic paper tabs. Topics sync to Google Sheets.
+v2.2  Pre-populated official FR & AFM syllabus topics (checkable).
+v2.1  New tabs: All Sessions, Topics, Analytics. Per-paper topic tracking.
+v2.0  Light theme (white bg, dark text, gold accents).
 v1.4  Network-first caching (no reinstall needed), no-cache headers,
       auto-reload on update, visible version tag, minute-aware durations,
       POST headers removed (sync fix), single-ping live status.
