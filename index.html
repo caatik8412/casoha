@@ -898,25 +898,27 @@ window.addEventListener('load',function(){
 });
 
 // Topic paper tabs
-document.querySelectorAll('.topicPaperTab').forEach(btn=>{
-  btn.onclick=()=>{
-    document.querySelectorAll('.topicPaperTab').forEach(b=>b.classList.remove('on'));
-    btn.classList.add('on');
-    renderTopics();
+window.addEventListener('load', ()=>{
+  document.querySelectorAll('.topicPaperTab').forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll('.topicPaperTab').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      renderTopics();
+    };
+  });
+
+  // Add topic button
+  $('topicAdd').onclick=()=>{
+    const text=$('topicNew').value.trim();
+    if(!text)return;
+    const paper=document.querySelector('.topicPaperTab.on').dataset.p;
+    if(!S.topics) S.topics={};
+    if(!S.topics[paper]) S.topics[paper]=[];
+    S.topics[paper].push({name:text,done:false,date:Date.now()});
+    $('topicNew').value='';
+    persist(); syncState(); renderTopics();
   };
 });
-
-// Add topic button
-$('topicAdd').onclick=()=>{
-  const text=$('topicNew').value.trim();
-  if(!text)return;
-  const paper=document.querySelector('.topicPaperTab.on').dataset.p;
-  if(!S.topics) S.topics={};
-  if(!S.topics[paper]) S.topics[paper]=[];
-  S.topics[paper].push({name:text,done:false,date:Date.now()});
-  $('topicNew').value='';
-  persist(); syncState(); renderTopics();
-};
 
 </script>
 
