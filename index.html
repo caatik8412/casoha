@@ -356,7 +356,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.4",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.6",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbyQEYVkQBfMpZ6hio8hcbnhlWxdCtdXioAwm5X3dHJaoEiZVivAwaWoenxXLl945kchDg/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
@@ -414,10 +414,9 @@ function load(){
     const r=localStorage.getItem('cafocus');
     if(r) S=Object.assign(S,JSON.parse(r));
   }catch(e){}
-  // Ensure topics exist (migration for old data)
-  if(!S.topics || !S.topics.FR) {
-    S.topics = S.topics || {};
-    S.topics.FR = S.topics.FR || [
+  // Ensure topics exist (migration for old data) — always repopulate from defaults
+  S.topics = {
+    FR: [
       {name:"Ind AS 16: PPE",done:false},{name:"Ind AS 38: Intangible Assets",done:false},
       {name:"Ind AS 2: Inventories",done:false},{name:"Ind AS 40: Investment Property",done:false},
       {name:"Ind AS 19: Employee Benefits",done:false},{name:"Ind AS 102: Share Based Payment",done:false},
@@ -433,8 +432,8 @@ function load(){
       {name:"Ind AS 8: Accounting Policies",done:false},{name:"Ind AS 10: Post Balance Sheet",done:false},
       {name:"Ind AS 37: Provisions",done:false},{name:"Ind AS 24: Related Party",done:false},
       {name:"Ind AS 101: First Time Adoption",done:false}
-    ];
-    S.topics.AFM = S.topics.AFM || [
+    ],
+    AFM: [
       {name:"Ch 1: Financial Policy & Corporate Strategy",done:false},{name:"Ch 2: Risk Management",done:false},
       {name:"Ch 3: Advanced Capital Budgeting",done:false},{name:"Ch 4: Security Analysis",done:false},
       {name:"Ch 5: Security Valuation",done:false},{name:"Ch 6: Portfolio Management",done:false},
@@ -443,10 +442,10 @@ function load(){
       {name:"Ch 11: International Financial Mgmt",done:false},{name:"Ch 12: Interest Rate Risk",done:false},
       {name:"Ch 13: Business Valuation",done:false},{name:"Ch 14: M&A & Restructuring",done:false},
       {name:"Ch 15: Startup Finance",done:false}
-    ];
-    S.topics.AAPE = S.topics.AAPE || [];
-    persist();
-  }
+    ],
+    AAPE: []
+  };
+  persist();
 }
 function persist(){ localStorage.setItem('cafocus',JSON.stringify(S)); }
 
@@ -581,7 +580,7 @@ async function flushSessions(){
 async function syncState(){
   if(!CONFIG.SHEET_URL)return;
   await writeGet({type:'state',targets:S.targets,portion:S.portion,
-    dailyGoal:S.dailyGoal,weeklyHrs:S.weeklyHrs,tasks:S.tasks,plan:S.plan,updated:Date.now()});
+    dailyGoal:S.dailyGoal,weeklyHrs:S.weeklyHrs,tasks:S.tasks,plan:S.plan,topics:S.topics,updated:Date.now()});
 }
 async function sendLive(status){
   if(!CONFIG.SHEET_URL)return;
@@ -962,6 +961,8 @@ window.addEventListener('load', ()=>{
 
 <!--
 ========================= VERSION LOG =========================
+v2.6  Include topics in syncState — topics now sync to Google Sheet.
+v2.5  Force repopulate topics on every load (fix: always load 31 FR + 15 AFM chapters).
 v2.4  Fixed topics initialization — migrate old localStorage to include FR/AFM syllabus.
 v2.3  Topics tab with official CA Final syllabus (31 FR chapters, 15 AFM chapters).
       Fixed event listener timing for topic paper tabs. Topics sync to Google Sheets.
