@@ -212,6 +212,9 @@ body{
   <div class="tabs">
     <div class="tab on" data-view="today">Today</div>
     <div class="tab" data-view="plan">Plan</div>
+    <div class="tab" data-view="sessions">Sessions</div>
+    <div class="tab" data-view="topics">Topics</div>
+    <div class="tab" data-view="analytics">Analytics</div>
   </div>
 
   <!-- ============ TODAY VIEW ============ -->
@@ -293,7 +296,42 @@ body{
       <div class="sec-t">Planned Targets</div>
       <div id="planList"></div>
     </div>
-  </div>
+  </div><!-- /view-plan -->
+
+  <!-- ============ ALL SESSIONS VIEW ============ -->
+  <div class="view" id="view-sessions">
+    <div class="card">
+      <div class="sec-t">All Sessions</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Complete history of study sessions</div>
+      <div id="allSessionsList" style="max-height:600px;overflow-y:auto"></div>
+    </div>
+  </div><!-- /view-sessions -->
+
+  <!-- ============ TOPICS VIEW ============ -->
+  <div class="view" id="view-topics">
+    <div class="card">
+      <div class="sec-t">Topics Covered</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Track completion by paper</div>
+      <div id="paperTabs" style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="topicPaperTab on" data-p="FR" style="flex:1;padding:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">FR</button>
+        <button class="topicPaperTab" data-p="AFM" style="flex:1;padding:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">AFM</button>
+        <button class="topicPaperTab" data-p="AAPE" style="flex:1;padding:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">AAPE</button>
+      </div>
+      <div id="topicsList" style="max-height:500px;overflow-y:auto;margin-bottom:12px"></div>
+      <input id="topicNew" placeholder="add new topic" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text);margin-bottom:6px">
+      <button id="topicAdd" style="width:100%;padding:10px;background:var(--grad);color:#1a1206;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px">Add Topic</button>
+    </div>
+  </div><!-- /view-topics -->
+
+  <!-- ============ ANALYTICS VIEW ============ -->
+  <div class="view" id="view-analytics">
+    <div class="card">
+      <div class="sec-t">Study Analytics</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Daily, weekly, and monthly breakdown</div>
+      <div id="analyticsContent"></div>
+    </div>
+  </div><!-- /view-analytics -->
+
 </div>
 
 <div class="sync" id="syncPill">synced</div>
@@ -318,7 +356,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.0",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.1",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbyQEYVkQBfMpZ6hio8hcbnhlWxdCtdXioAwm5X3dHJaoEiZVivAwaWoenxXLl945kchDg/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
@@ -339,6 +377,7 @@ let S = {
   weeklyHrs: 35,
   tasks: [],                                       // {id,text,done,week,carried}
   plan: [],                                        // {id,text,date,done}  scheduled targets
+  topics: {FR:[],AFM:[],AAPE:[]},                 // {name,done,date} per paper
   lastWeek: weekStart()
 };
 function load(){ try{const r=localStorage.getItem('cafocus');if(r)S=Object.assign(S,JSON.parse(r));}catch(e){} }
@@ -526,7 +565,7 @@ function render(){
   // weekly bar (kept in hours vs the hours target)
   const wp=Math.min(100,Math.round(hrs(weekMins)/S.weeklyHrs*100));
   $('wkFill').style.width=wp+'%'; $('wkVal').textContent=`${fmtDur(weekMins)} / ${S.weeklyHrs}h`;
-  renderPapers(); renderTasks(); renderChart(); renderLog(); renderPlan();
+  renderPapers(); renderTasks(); renderChart(); renderLog(); renderPlan(); renderAllSessions(); renderTopics(); renderAnalytics();
  }catch(err){ console.error('render error',err); }
 }
 function streak(){
@@ -659,6 +698,96 @@ function mergeLocal(local,remote){
 }
 
 /* ========= BOOT ========= */
+function renderAllSessions(){
+  const html=S.sessions.length?S.sessions.slice().reverse().map(s=>`
+    <div style="background:var(--panel);border-radius:8px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <div style="font-weight:600;color:var(--text)">${s.paper}</div>
+          <div style="font-size:10px;color:var(--muted)">${new Date(s.ts).toLocaleString('en-IN')}</div>
+          ${s.note?`<div style="font-size:10px;color:var(--muted);margin-top:4px">${s.note}</div>`:''}
+        </div>
+        <div style="text-align:right;font-weight:600;color:var(--gold)">${fmtDur(s.mins)}</div>
+      </div>
+    </div>
+  `).join(''):'<div style="color:var(--muted);font-size:12px">No sessions yet</div>';
+  $('allSessionsList').innerHTML=html;
+}
+
+function renderTopics(){
+  const curPaper=document.querySelector('.topicPaperTab.on')?.dataset.p||'FR';
+  const topics=S.topics?.[curPaper]||[];
+  const html=topics.length?topics.map((t,i)=>`
+    <div style="background:var(--panel);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer">
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTopic('${curPaper}',${i})" style="cursor:pointer">
+        <div style="flex:1">
+          <div style="color:var(--text);font-size:12px">${t.name}</div>
+          ${t.date?`<div style="font-size:9px;color:var(--muted)">Added ${new Date(t.date).toLocaleDateString()}</div>`:''}
+        </div>
+      </label>
+      <button onclick="deleteTopic('${curPaper}',${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px">×</button>
+    </div>
+  `).join(''):'<div style="color:var(--muted);font-size:12px">No topics yet. Add one below.</div>';
+  $('topicsList').innerHTML=html;
+  const pct=topics.length?Math.round(topics.filter(t=>t.done).length/topics.length*100):0;
+  document.querySelector('.topicPaperTab.on').textContent=`${curPaper} ${pct?`(${pct}%)`:''}`; 
+}
+
+function renderAnalytics(){
+  const byDay={}, byWeek={}, byMonth={};
+  S.sessions.forEach(s=>{
+    const d=new Date(s.ts);
+    const dayKey=d.toLocaleDateString('en-CA');
+    const weekKey='W'+(Math.floor((d.getDate()-d.getDay()+4)/7));
+    const monthKey=d.toLocaleDateString('en',{year:'numeric',month:'short'});
+    byDay[dayKey]=(byDay[dayKey]||0)+s.mins;
+    byWeek[weekKey]=(byWeek[weekKey]||0)+s.mins;
+    byMonth[monthKey]=(byMonth[monthKey]||0)+s.mins;
+  });
+  const html=`
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">Last 7 Days</div>
+      ${Object.entries(byDay).slice(-7).reverse().map(([k,v])=>`
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span>${new Date(k).toLocaleDateString('en-IN',{weekday:'short'})}</span>
+          <span style="color:var(--gold)">${fmtDur(v)}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">By Week</div>
+      ${Object.entries(byWeek).reverse().map(([k,v])=>`
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span>${k}</span>
+          <span style="color:var(--gold)">${fmtDur(v)}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px">By Month</div>
+      ${Object.entries(byMonth).reverse().map(([k,v])=>`
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span>${k}</span>
+          <span style="color:var(--gold)">${fmtDur(v)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  $('analyticsContent').innerHTML=html;
+}
+
+function toggleTopic(paper,idx){
+  if(!S.topics) S.topics={};
+  if(!S.topics[paper]) S.topics[paper]=[];
+  S.topics[paper][idx].done=!S.topics[paper][idx].done;
+  persist(); syncState(); renderTopics();
+}
+function deleteTopic(paper,idx){
+  if(S.topics?.[paper]) S.topics[paper].splice(idx,1);
+  persist(); syncState(); renderTopics();
+}
+
 function boot(){ var v=document.getElementById('verTag'); if(v)v.textContent=CONFIG.VERSION; load(); rolloverWeek(); render(); flushSessions(); pullState(); setInterval(pullState,180000); }
 /* ===== SELF-CONTAINED PWA (single file, installable) ===== */
 (function(){
@@ -738,6 +867,27 @@ window.addEventListener('load',function(){
     }
   };
 });
+
+// Topic paper tabs
+document.querySelectorAll('.topicPaperTab').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.topicPaperTab').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    renderTopics();
+  };
+});
+
+// Add topic button
+$('topicAdd').onclick=()=>{
+  const text=$('topicNew').value.trim();
+  if(!text)return;
+  const paper=document.querySelector('.topicPaperTab.on').dataset.p;
+  if(!S.topics) S.topics={};
+  if(!S.topics[paper]) S.topics[paper]=[];
+  S.topics[paper].push({name:text,done:false,date:Date.now()});
+  $('topicNew').value='';
+  persist(); syncState(); renderTopics();
+};
 
 </script>
 
