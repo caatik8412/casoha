@@ -356,10 +356,10 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.6",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.7",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
-  SHEET_URL: "https://script.google.com/macros/s/AKfycbyQEYVkQBfMpZ6hio8hcbnhlWxdCtdXioAwm5X3dHJaoEiZVivAwaWoenxXLl945kchDg/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
 };
 const PAPERS = ["FR","AFM","AAPE"];
 const PAPER_NAMES = {FR:"Financial Reporting",AFM:"Adv. Financial Mgmt",AAPE:"Adv. Auditing & Ethics"};
@@ -961,6 +961,8 @@ window.addEventListener('load', ()=>{
 
 <!--
 ========================= VERSION LOG =========================
+v2.7  Single Topics tab for both student & guide. One unified source of truth.
+      Removed redundant Progress tab. Topics sheet syncs automatically.
 v2.6  Include topics in syncState — topics now sync to Google Sheet.
 v2.5  Force repopulate topics on every load (fix: always load 31 FR + 15 AFM chapters).
 v2.4  Fixed topics initialization — migrate old localStorage to include FR/AFM syllabus.
