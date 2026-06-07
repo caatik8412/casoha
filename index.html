@@ -356,7 +356,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.1",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.2",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbyQEYVkQBfMpZ6hio8hcbnhlWxdCtdXioAwm5X3dHJaoEiZVivAwaWoenxXLl945kchDg/exec"                 // <-- paste your Apps Script /exec URL here to enable Sheet sync
@@ -377,7 +377,36 @@ let S = {
   weeklyHrs: 35,
   tasks: [],                                       // {id,text,done,week,carried}
   plan: [],                                        // {id,text,date,done}  scheduled targets
-  topics: {FR:[],AFM:[],AAPE:[]},                 // {name,done,date} per paper
+  topics: {
+    FR: [
+      {name:"Ind AS 16: PPE",done:false},{name:"Ind AS 38: Intangible Assets",done:false},
+      {name:"Ind AS 2: Inventories",done:false},{name:"Ind AS 40: Investment Property",done:false},
+      {name:"Ind AS 19: Employee Benefits",done:false},{name:"Ind AS 102: Share Based Payment",done:false},
+      {name:"Ind AS 1: Presentation of FS",done:false},{name:"Ind AS 34: Interim Reporting",done:false},
+      {name:"Ind AS 108: Operating Segments",done:false},{name:"Ind AS 115: Revenue",done:false},
+      {name:"Ind AS 116: Leases",done:false},{name:"Ind AS 32, 107, 109: Financial Instruments",done:false},
+      {name:"Ind AS 12: Income Taxes",done:false},{name:"Ind AS 103: Business Combinations",done:false},
+      {name:"Ind AS 110, 28, 111: Consolidated FS",done:false},{name:"Ind AS 113: Fair Value",done:false},
+      {name:"Ind AS 41: Agriculture",done:false},{name:"Ind AS 20: Govt Grants",done:false},
+      {name:"Ind AS 36: Impairment",done:false},{name:"Ind AS 105: Non-Current Assets Held for Sale",done:false},
+      {name:"Ind AS 23: Borrowing Costs",done:false},{name:"Ind AS 33: EPS",done:false},
+      {name:"Ind AS 21: Foreign Exchange",done:false},{name:"Ind AS 7: Cash Flows",done:false},
+      {name:"Ind AS 8: Accounting Policies",done:false},{name:"Ind AS 10: Post Balance Sheet",done:false},
+      {name:"Ind AS 37: Provisions",done:false},{name:"Ind AS 24: Related Party",done:false},
+      {name:"Ind AS 101: First Time Adoption",done:false}
+    ],
+    AFM: [
+      {name:"Ch 1: Financial Policy & Corporate Strategy",done:false},{name:"Ch 2: Risk Management",done:false},
+      {name:"Ch 3: Advanced Capital Budgeting",done:false},{name:"Ch 4: Security Analysis",done:false},
+      {name:"Ch 5: Security Valuation",done:false},{name:"Ch 6: Portfolio Management",done:false},
+      {name:"Ch 7: Securitization",done:false},{name:"Ch 8: Mutual Funds",done:false},
+      {name:"Ch 9: Derivatives Analysis",done:false},{name:"Ch 10: Foreign Exchange Risk",done:false},
+      {name:"Ch 11: International Financial Mgmt",done:false},{name:"Ch 12: Interest Rate Risk",done:false},
+      {name:"Ch 13: Business Valuation",done:false},{name:"Ch 14: M&A & Restructuring",done:false},
+      {name:"Ch 15: Startup Finance",done:false}
+    ],
+    AAPE: []
+  },
   lastWeek: weekStart()
 };
 function load(){ try{const r=localStorage.getItem('cafocus');if(r)S=Object.assign(S,JSON.parse(r));}catch(e){} }
