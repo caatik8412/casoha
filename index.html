@@ -365,7 +365,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.10",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.11",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
@@ -470,18 +470,24 @@ $('pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('unlock').click();}
 if(alreadyUnlocked()){ showApp(); }
 
 /* ========= TIMER ========= */
-let curPaper="FR", startTs=null, tick=null;
+let curPaper="FR", startTs=null, tick=null, liveUpdateInterval=null;
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
   if(startTs)return; // can't switch mid-session
   document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
   c.classList.add('on'); curPaper=c.dataset.p;
 });
-$('startBtn').onclick=()=>{
+$('startBtn').onclick=async()=>{
   startTs=Date.now();
   $('tstatus').innerHTML='<span class="dot"></span>Studying '+curPaper;
   $('tstatus').classList.add('live');
   $('startBtn').disabled=true; $('stopBtn').disabled=false;
-  sendLive('studying');                      // single ping on start
+  await sendLive('studying');  // send immediately
+  
+  // Update Live status every 5 seconds while studying
+  liveUpdateInterval=setInterval(async()=>{
+    if(startTs) await sendLive('studying');
+  },5000);
+  
   tick=setInterval(()=>{const s=Math.floor((Date.now()-startTs)/1000);
     $('timer').textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`;
   },1000);
@@ -489,6 +495,7 @@ $('startBtn').onclick=()=>{
 $('stopBtn').onclick=()=>{
   if(!startTs){ return; }
   clearInterval(tick);
+  clearInterval(liveUpdateInterval);  // clear the Live update interval
   const secs=Math.max(1,Math.round((Date.now()-startTs)/1000));
   const mins=Math.max(1,Math.round(secs/60));
   const e={id:Date.now()+''+Math.floor(Math.random()*99),ts:startTs,date:todayKey(),
