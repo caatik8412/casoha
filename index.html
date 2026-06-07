@@ -285,7 +285,10 @@ body{
   <!-- ============ PLAN VIEW ============ -->
   <div class="view" id="view-plan">
     <div class="card">
-      <div class="sec-t">Schedule a Target</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="sec-t">Schedule a Target</div>
+        <button onclick="syncAndRefresh()" style="padding:6px 10px;background:var(--gold);border:none;color:var(--bg);border-radius:6px;cursor:pointer;font-size:10px;font-weight:600">⟳ Sync</button>
+      </div>
       <div class="plan-add">
         <input id="planText" placeholder="task / topic — e.g. Revise Ind AS 115">
         <input id="planDate" type="date">
@@ -301,7 +304,10 @@ body{
   <!-- ============ ALL SESSIONS VIEW ============ -->
   <div class="view" id="view-sessions">
     <div class="card">
-      <div class="sec-t">All Sessions</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="sec-t">All Sessions</div>
+        <button onclick="syncAndRefresh()" style="padding:6px 10px;background:var(--gold);border:none;color:var(--bg);border-radius:6px;cursor:pointer;font-size:10px;font-weight:600">⟳ Sync</button>
+      </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Complete history of study sessions</div>
       <div id="allSessionsList" style="max-height:600px;overflow-y:auto"></div>
     </div>
@@ -310,7 +316,10 @@ body{
   <!-- ============ TOPICS VIEW ============ -->
   <div class="view" id="view-topics">
     <div class="card">
-      <div class="sec-t">Topics Covered</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="sec-t">Topics Covered</div>
+        <button onclick="syncAndRefresh()" style="padding:6px 10px;background:var(--gold);border:none;color:var(--bg);border-radius:6px;cursor:pointer;font-size:10px;font-weight:600">⟳ Sync</button>
+      </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Track completion by paper</div>
       <div id="paperTabs" style="display:flex;gap:8px;margin-bottom:12px">
         <button class="topicPaperTab on" data-p="FR" style="flex:1;padding:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">FR</button>
@@ -356,7 +365,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.9",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.10",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
@@ -727,6 +736,12 @@ function renderLog(){
 }
 
 /* ========= PULL STATE + SESSIONS (on-demand, not periodic) ========= */
+async function syncAndRefresh(){
+  await syncState(); // Sync current state
+  await pullState(); // Fetch fresh from Sheet
+  render();
+}
+
 async function pullState(){
   if(!CONFIG.SHEET_URL)return;
   if(location.protocol!=='https:'&&location.protocol!=='http:')return;
@@ -999,6 +1014,8 @@ window.addEventListener('load', ()=>{
 
 <!--
 ========================= VERSION LOG =========================
+v2.10 Added "⟳ Sync Now" button to Topics, Sessions, and Plan tabs.
+      No need to go back to Today tab to sync anymore.
 v2.9  Sheet-first architecture: Sessions sync on STOP only. Topics/tasks sync on action.
       No background 3-min polling. UI unchanged. Same beautiful design.
 v2.8  Two-way sync: fetch topics from Sheet on load. Checkboxes sync both ways now.
