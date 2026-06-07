@@ -365,7 +365,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.11",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.12",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
@@ -734,10 +734,13 @@ function renderLog(){
   const list=S.sessions.slice().sort((a,b)=>b.ts-a.ts).slice(0,40);
   $('log').innerHTML=list.length? list.map(s=>{
     const d=new Date(s.ts);
+    const startTime=d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+    const endTime=new Date(s.ts+s.mins*60000).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+    const dateStr=d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
     return `<div class="entry"><div class="left">
       <span class="pp" style="background:${cmap[s.paper]}">${s.paper}</span>
-      <div class="meta"><div class="nt">${esc(s.note)||'<span style="color:var(--muted)">no note</span>'}</div>
-      <div class="dt">${d.toLocaleDateString(undefined,{month:'short',day:'numeric'})} · ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}${s.synced?'':' · ⟳'}</div></div></div>
+      <div class="meta"><div class="nt">${s.note?'Topic: '+esc(s.note):'<span style="color:var(--muted)">no topic noted</span>'}</div>
+      <div class="dt">${dateStr} · ${startTime} - ${endTime}${s.synced?'':' · ⟳'}</div></div></div>
       <div class="dur">${fmtDur(s.mins)}</div></div>`;
   }).join('') : '<div class="empty">No sessions logged yet</div>';
 }
@@ -825,18 +828,22 @@ function mergeLocal(local,remote){
 
 /* ========= BOOT ========= */
 function renderAllSessions(){
-  const html=S.sessions.length?S.sessions.slice().reverse().map(s=>`
+  const html=S.sessions.length?S.sessions.slice().reverse().map(s=>{
+    const startTime=new Date(s.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const endTime=new Date(s.ts+s.mins*60000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const date=new Date(s.ts).toLocaleDateString('en-IN',{month:'short',day:'2-digit'});
+    return `
     <div style="background:var(--panel);border-radius:8px;padding:12px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:start">
         <div>
           <div style="font-weight:600;color:var(--text)">${s.paper}</div>
-          <div style="font-size:10px;color:var(--muted)">${new Date(s.ts).toLocaleString('en-IN')}</div>
-          ${s.note?`<div style="font-size:10px;color:var(--muted);margin-top:4px">${s.note}</div>`:''}
+          <div style="font-size:10px;color:var(--muted)">${date} · ${startTime} - ${endTime}</div>
+          ${s.note?`<div style="font-size:10px;color:var(--gold);margin-top:4px;font-weight:500">Topic: ${s.note}</div>`:''}
         </div>
         <div style="text-align:right;font-weight:600;color:var(--gold)">${fmtDur(s.mins)}</div>
       </div>
     </div>
-  `).join(''):'<div style="color:var(--muted);font-size:12px">No sessions yet</div>';
+  `}).join(''):'<div style="color:var(--muted);font-size:12px">No sessions yet</div>';
   $('allSessionsList').innerHTML=html;
 }
 
