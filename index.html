@@ -365,7 +365,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.14",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v2.15",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
@@ -675,10 +675,17 @@ function render(){
  try{
   renderCountdown();
   const t=todayKey(), w=weekStart();
-  // Normalize dates for comparison (handle various formats)
+  // Robust date comparison - normalize all formats
   const todayMins=S.sessions.filter(s=>{
-    const sdate = s.date || new Date(s.ts).toLocaleDateString('en-CA');
-    return sdate.substring(0,10) === t.substring(0,10); // compare YYYY-MM-DD
+    const sdate = (s.date || '').trim().substring(0,10);
+    const tdate = t.substring(0,10);
+    const match = sdate === tdate;
+    if(!match && s.ts) {
+      // Fallback: use timestamp if date doesn't match
+      const tsdate = new Date(s.ts).toLocaleDateString('en-CA').substring(0,10);
+      return tsdate === tdate;
+    }
+    return match;
   }).reduce((a,s)=>a+s.mins,0);
   const weekMins=S.sessions.filter(s=>weekStart(new Date(s.ts))===w).reduce((a,s)=>a+s.mins,0);
   $('sToday').innerHTML=fmtDur(todayMins);
