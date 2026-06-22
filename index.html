@@ -365,7 +365,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v3.2",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v3.3",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
@@ -474,10 +474,14 @@ let curPaper="FR", startTs=null, tick=null;
 
 // Restore timer state on page load
 function restoreTimerState() {
-  const savedStart = sessionStorage.getItem('timerStartTs');
+  const savedStart = localStorage.getItem('timerStartTs');
   if (savedStart) {
     startTs = parseInt(savedStart);
     displayTimerUI(true); // Show STOP button
+    // Resume the timer display immediately
+    updateTimerDisplay();
+    if(tick) clearInterval(tick);
+    tick=setInterval(updateTimerDisplay, 1000);
   }
 }
 
@@ -515,7 +519,7 @@ document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
 // START BUTTON
 $('startBtn').onclick=()=>{
   startTs=Date.now();
-  sessionStorage.setItem('timerStartTs', String(startTs));
+  localStorage.setItem('timerStartTs', String(startTs));
   displayTimerUI(true);
   
   // Update timer display every second
@@ -564,7 +568,7 @@ $('stopBtn').onclick=()=>{
   
   // Reset UI
   startTs = null;
-  sessionStorage.removeItem('timerStartTs');
+  localStorage.removeItem('timerStartTs');
   $('timer').textContent = '00:00:00';
   $('note').value = '';
   displayTimerUI(false);
