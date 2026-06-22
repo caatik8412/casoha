@@ -365,7 +365,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v2.15",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v3.0",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
@@ -470,79 +470,116 @@ $('pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('unlock').click();}
 if(alreadyUnlocked()){ showApp(); }
 
 /* ========= TIMER ========= */
-let curPaper="FR", startTs=null, tick=null, liveUpdateInterval=null;
+let curPaper="FR", startTs=null, tick=null;
 
-// Restore timer state from Session Storage (survives page reload but clears on tab close)
+// Restore timer state on page load
 function restoreTimerState() {
   const savedStart = sessionStorage.getItem('timerStartTs');
-  if (savedStart && !startTs) {
+  if (savedStart) {
     startTs = parseInt(savedStart);
-    // Resume the timer UI
-    $('startBtn').disabled = true;
-    $('stopBtn').disabled = false;
-    $('tstatus').innerHTML = '<span class="dot"></span>Studying ' + curPaper;
-    $('tstatus').classList.add('live');
-    
-    // Resume the interval
-    tick = setInterval(() => {
-      const s = Math.floor((Date.now() - startTs) / 1000);
-      $('timer').textContent = `${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`;
-    }, 1000);
-    
-    // Update Live status every 5 seconds
-    liveUpdateInterval = setInterval(async () => {
-      if (startTs) await sendLive('studying');
-    }, 5000);
+    displayTimerUI(true); // Show STOP button
   }
 }
 
-window.addEventListener('load', restoreTimerState);
+function displayTimerUI(isRunning) {
+  if (isRunning) {
+    $('startBtn').style.display = 'none';
+    $('stopBtn').style.display = 'block';
+    $('tstatus').innerHTML = '<span class="dot"></span>Studying ' + curPaper;
+    $('tstatus').classList.add('live');
+  } else {
+    $('startBtn').style.display = 'block';
+    $('stopBtn').style.display = 'none';
+    $('tstatus').textContent = 'Ready';
+    $('tstatus').classList.remove('live');
+  }
+}
+
+function updateTimerDisplay() {
+  if (!startTs) return;
+  const secs = Math.floor((Date.now() - startTs) / 1000);
+  $('timer').textContent = `${pad(Math.floor(secs/3600))}:${pad(Math.floor(secs%3600/60))}:${pad(secs%60)}`;
+}
+
+// Paper selector
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
-  if(startTs)return; // can't switch mid-session
+  if(startTs) {
+    alert('Stop current session first');
+    return;
+  }
   document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
-  c.classList.add('on'); curPaper=c.dataset.p;
+  c.classList.add('on');
+  curPaper=c.dataset.p;
 });
-$('startBtn').onclick=async()=>{
+
+// START BUTTON
+$('startBtn').onclick=()=>{
   startTs=Date.now();
-  sessionStorage.setItem('timerStartTs', startTs); // Save for page reload
-  $('tstatus').innerHTML='<span class="dot"></span>Studying '+curPaper;
-  $('tstatus').classList.add('live');
-  $('startBtn').disabled=true; $('stopBtn').disabled=false;
-  await sendLive('studying');  // send immediately
+  sessionStorage.setItem('timerStartTs', String(startTs));
+  displayTimerUI(true);
   
-  // Update Live status every 5 seconds while studying
-  liveUpdateInterval=setInterval(async()=>{
-    if(startTs) await sendLive('studying');
-  },5000);
+  // Update timer display every second
+  if(tick) clearInterval(tick);
+  tick=setInterval(updateTimerDisplay, 1000);
   
-  tick=setInterval(()=>{const s=Math.floor((Date.now()-startTs)/1000);
-    $('timer').textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s%3600/60))}:${pad(s%60)}`;
-  },1000);
+  // Send "studying" status to Sheet
+  sendLive('studying');
 };
+
+// STOP BUTTON
 $('stopBtn').onclick=()=>{
-  if(!startTs){ return; }
-  clearInterval(tick);
-  clearInterval(liveUpdateInterval);  // clear the Live update interval
-  const secs=Math.max(1,Math.round((Date.now()-startTs)/1000));
-  const mins=Math.max(1,Math.round(secs/60));
-  const e={id:Date.now()+''+Math.floor(Math.random()*99),ts:startTs,date:todayKey(),
-    paper:curPaper,mins,secs,note:($('note').value||'').trim()};
+  if(!startTs) return;
   
-  // Sync immediately to Sheet
-  writeGet({type:'session',id:e.id,ts:e.ts,date:e.date,paper:e.paper,mins:e.mins,note:e.note});
-  S.sessions.push(e); persist();
+  // Stop timer display
+  if(tick) clearInterval(tick);
   
-  startTs=null;
-  sessionStorage.removeItem('timerStartTs'); // Clear session storage
-  $('timer').textContent='00:00:00'; $('note').value='';
-  $('tstatus').textContent='Ready'; $('tstatus').classList.remove('live');
-  $('startBtn').disabled=false; $('stopBtn').disabled=true;
+  // Calculate duration
+  const secs = Math.max(1, Math.floor((Date.now() - startTs) / 1000));
+  const mins = Math.max(1, Math.round(secs / 60));
+  
+  // Create session object
+  const session = {
+    id: 'sess_' + Date.now(),
+    ts: startTs,
+    date: todayKey(),
+    paper: curPaper,
+    mins: mins,
+    note: ($('note').value || '').trim()
+  };
+  
+  // Add to local sessions
+  S.sessions.push(session);
+  persist();
+  
+  // Send to Sheet
+  writeGet({
+    type: 'session',
+    id: session.id,
+    ts: session.ts,
+    date: session.date,
+    paper: session.paper,
+    mins: session.mins,
+    note: session.note
+  });
+  
+  // Reset UI
+  startTs = null;
+  sessionStorage.removeItem('timerStartTs');
+  $('timer').textContent = '00:00:00';
+  $('note').value = '';
+  displayTimerUI(false);
+  
+  // Send "idle" status
   sendLive('idle');
+  
+  // Refresh display
   render();
   
   // Fetch fresh data from Sheet
-  setTimeout(pullState, 1000);
+  setTimeout(pullState, 500);
 };
+
+window.addEventListener('load', restoreTimerState);
 
 /* ========= WEEK ROLLOVER (carry unfinished tasks) ========= */
 function rolloverWeek(){
