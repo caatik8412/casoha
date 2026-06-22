@@ -83,6 +83,8 @@ body{
 .tbtns button:active{transform:scale(.97)}.tbtns button:disabled{opacity:.3}
 .bStart{background:var(--grad);color:#1a1206;border:none}
 .bStop{background:transparent;color:var(--danger);border-color:var(--danger)}
+.bUp,.bDown{background:var(--panel2);color:var(--text);border:1px solid var(--line);flex:1}
+.bUp:disabled,.bDown:disabled{opacity:0.3;cursor:not-allowed}
 
 /* ---- STAT STRIP ---- */
 .strip{display:flex;gap:10px;margin-bottom:14px}
@@ -232,8 +234,10 @@ body{
     <div class="timer" id="timer">00:00:00</div>
     <input id="note" placeholder="note / topic (optional)">
     <div class="tbtns">
-      <button class="bStart" id="startBtn">Start</button>
-      <button class="bStop" id="stopBtn" disabled>Stop &amp; Log</button>
+      <button class="bStart" id="startBtn">START</button>
+      <button class="bUp" id="upBtn" disabled>⬆️ +1m</button>
+      <button class="bDown" id="downBtn" disabled>⬇️ -1m</button>
+      <button class="bStop" id="stopBtn" disabled>SAVE & LOG</button>
     </div>
   </div>
 
@@ -365,7 +369,7 @@ body{
 <script>
 /* ========= CONFIG ========= */
 const CONFIG = {
-  VERSION: "v3.0",              // bump this on every change (see version log at bottom of file)
+  VERSION: "v3.1",              // bump this on every change (see version log at bottom of file)
   PIN: "IAMCA",                 // morning unlock code (change as you like)
   EXAM_DATE: "2026-11-01",      // CA Final Nov 2026 — update when ICAI announces exact date
   SHEET_URL: "https://script.google.com/macros/s/AKfycbw_Ea7pgPXwX1FvPXWpcLJHP9t7gLsDlanp_IhgClHyD20KQhSgfOY7R1ymXb7HmtDr3w/exec"                 // <-- new deployment
@@ -470,7 +474,7 @@ $('pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('unlock').click();}
 if(alreadyUnlocked()){ showApp(); }
 
 /* ========= TIMER ========= */
-let curPaper="FR", startTs=null, tick=null;
+let curPaper="FR", startTs=null, tick=null, adjustedMins=0;
 
 // Restore timer state on page load
 function restoreTimerState() {
@@ -483,13 +487,17 @@ function restoreTimerState() {
 
 function displayTimerUI(isRunning) {
   if (isRunning) {
-    $('startBtn').style.display = 'none';
-    $('stopBtn').style.display = 'block';
+    $('startBtn').disabled = true;
+    $('upBtn').disabled = false;
+    $('downBtn').disabled = false;
+    $('stopBtn').disabled = false;
     $('tstatus').innerHTML = '<span class="dot"></span>Studying ' + curPaper;
     $('tstatus').classList.add('live');
   } else {
-    $('startBtn').style.display = 'block';
-    $('stopBtn').style.display = 'none';
+    $('startBtn').disabled = false;
+    $('upBtn').disabled = true;
+    $('downBtn').disabled = true;
+    $('stopBtn').disabled = true;
     $('tstatus').textContent = 'Ready';
     $('tstatus').classList.remove('live');
   }
@@ -497,7 +505,8 @@ function displayTimerUI(isRunning) {
 
 function updateTimerDisplay() {
   if (!startTs) return;
-  const secs = Math.floor((Date.now() - startTs) / 1000);
+  let secs = Math.floor((Date.now() - startTs) / 1000) + (adjustedMins * 60);
+  secs = Math.max(0, secs);
   $('timer').textContent = `${pad(Math.floor(secs/3600))}:${pad(Math.floor(secs%3600/60))}:${pad(secs%60)}`;
 }
 
@@ -515,6 +524,7 @@ document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
 // START BUTTON
 $('startBtn').onclick=()=>{
   startTs=Date.now();
+  adjustedMins=0;
   sessionStorage.setItem('timerStartTs', String(startTs));
   displayTimerUI(true);
   
@@ -526,15 +536,27 @@ $('startBtn').onclick=()=>{
   sendLive('studying');
 };
 
-// STOP BUTTON
+// UP BUTTON (+1 minute)
+$('upBtn').onclick=()=>{
+  adjustedMins += 1;
+  updateTimerDisplay();
+};
+
+// DOWN BUTTON (-1 minute)
+$('downBtn').onclick=()=>{
+  adjustedMins = Math.max(0, adjustedMins - 1);
+  updateTimerDisplay();
+};
+
+// STOP & LOG BUTTON
 $('stopBtn').onclick=()=>{
   if(!startTs) return;
   
   // Stop timer display
   if(tick) clearInterval(tick);
   
-  // Calculate duration
-  const secs = Math.max(1, Math.floor((Date.now() - startTs) / 1000));
+  // Calculate duration (actual time + adjustments)
+  const secs = Math.max(1, Math.floor((Date.now() - startTs) / 1000) + (adjustedMins * 60));
   const mins = Math.max(1, Math.round(secs / 60));
   
   // Create session object
@@ -564,6 +586,7 @@ $('stopBtn').onclick=()=>{
   
   // Reset UI
   startTs = null;
+  adjustedMins = 0;
   sessionStorage.removeItem('timerStartTs');
   $('timer').textContent = '00:00:00';
   $('note').value = '';
@@ -580,6 +603,17 @@ $('stopBtn').onclick=()=>{
 };
 
 window.addEventListener('load', restoreTimerState);
+
+// Auto-fetch from Sheet when user comes back to the app
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    console.log('App resumed, fetching from Sheet...');
+    pullState();
+  }
+});
+
+// Initial fetch on load
+setTimeout(() => pullState(), 1000);
 
 /* ========= WEEK ROLLOVER (carry unfinished tasks) ========= */
 function rolloverWeek(){
